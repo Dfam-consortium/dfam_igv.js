@@ -18,6 +18,9 @@ import ShoeboxTrack from "./shoebox/shoeboxTrack.js"
 import ImageTrack from "./ucsc/imageTrack.js"
 //import CNVPytorTrack from "./CNVpytor/cnvpytorTrack.js"
 
+// Dfam
+import ChainTrack from "./feature/chainTrack.js"
+import SelfPairTrack from "./feature/selfPairTrack.js"
 
 const trackFunctions =
     new Map([
@@ -42,7 +45,9 @@ const trackFunctions =
         ['junction', (config, browser) => new SpliceJunctionTrack(config, browser)],
         ['blat', (config, browser) => new BlatTrack(config, browser)],
         ['cnvpytor', (config, browser) => new CNVPytorTrack(config, browser)],
-        ['image', (config, browser) => new ImageTrack(config, browser)]
+        ['image', (config, browser) => new ImageTrack(config, browser)],
+        ['chain', (config, browser) => new ChainTrack(config, browser)],
+        ['selfpair', (config, browser) => new SelfPairTrack(config, browser)]
     ])
 
 function knownTrackTypes () {

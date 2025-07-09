@@ -35,6 +35,14 @@ class FeatureTrack extends TrackBase {
         // Obscure option, not common or supoorted, included for backward compatibility
         this.labelDisplayMode = config.labelDisplayMode
 
+        // Dfam - The default label color is the same as the feature color, which in 
+        //        cases not provide enough contrast.  Allow config 'labelColor' to override
+        //        this default behaviour and use a single color for labels.  This is a per-track
+        //        rather than per-feature setting.
+        if (config.labelColor) {
+          this.labelColor = config.labelColor 
+        }
+
         if (config._featureSource) {
             this.featureSource = config._featureSource
             delete config._featureSource
@@ -198,8 +206,11 @@ class FeatureTrack extends TrackBase {
             // Restrict the range requested to the limits: 1-chromosome.bpLength
             const chromosome = this.browser.genome.getChromosome(referenceFrame.chr)
             const chromosomeEnd = chromosome.bpLength
+            //options.sequenceInterval = this.browser.genome.getSequenceInterval(referenceFrame.chr,
+            //    bpStart > 0 ? bpStart : 0, bpEnd > chromosomeEnd ? chromosomeEnd : bpEnd)
+            // Dfam  -- off by one
             options.sequenceInterval = this.browser.genome.getSequenceInterval(referenceFrame.chr,
-                bpStart > 0 ? bpStart : 0, bpEnd > chromosomeEnd ? chromosomeEnd : bpEnd)
+                bpStart > 0 ? bpStart : 1, bpEnd > chromosomeEnd ? chromosomeEnd : bpEnd)
         }
 
 

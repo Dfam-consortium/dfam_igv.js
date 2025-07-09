@@ -157,6 +157,13 @@ function renderFeature(feature, bpStart, xScale, pixelHeight, ctx, options) {
 
                             renderAminoAcidSequence.call(this, ctx, feature.strand, leftExon, exon, riteExon, bpStart, options.bpPerPixel, py, h, options.sequenceInterval)
                         }
+                    // Dfam - Handle bigPsl files containing translated alignments
+                    // RMH: Is this a sufficient test for aligned protein features?
+                    }else if ( feature.oSequence !== undefined ) {
+                        if (options.bpPerPixel < aminoAcidSequenceRenderThreshold &&
+                            options.sequenceInterval) {
+                            renderAminoAcidSequenceAligned.call(this, ctx, feature, feature.strand, bpStart, options.bpPerPixel, py, h, options.sequenceInterval)
+                        }
                     }
 
                     // Arrows
@@ -182,6 +189,146 @@ function renderFeature(feature, bpStart, xScale, pixelHeight, ctx, options) {
     } finally {
         ctx.restore()
     }
+}
+
+// Dfam -- render *aligned* amino acid sequences rather than predicted ORFs
+// RMH: This borrows much from the original renderAminoAcidSequence() function
+//      and should probably be refactored alongside it.
+function renderAminoAcidSequenceAligned(
+    ctx, feature, strand, bpStart, bpPerPixel, y, height, sequenceInterval
+) {
+    const aaColors = ['rgb(124,124,204)', 'rgb(12, 12, 120)'];
+    const oChromStarts = feature.oChromStarts.split(',').map(s => parseInt(s, 10));
+    const oSequence = feature.oSequence;
+    const proteinLength = oSequence.length;
+
+    ctx.save();
+
+    const renderAminoAcidLetter = (width, xs, y, aminoAcidLetter) => {
+        if (aminoAcidLetter === 'STOP') aminoAcidLetter = '*';
+        const aminoAcidLetterWidth = ctx.measureText(aminoAcidLetter).width;
+        IGVGraphics.fillText(ctx, aminoAcidLetter, xs + (width - aminoAcidLetterWidth) / 2, y - 4, { fillStyle: '#ffffff' });
+    };
+                                                                                                                    
+    const doPaint = (start, end, aminoAcidLetter, colorToggle, isMismatch, isRemainder) => {
+        const xs = Math.round((start - bpStart) / bpPerPixel);
+        const xe = Math.round((end - bpStart) / bpPerPixel);
+        const width = xe - xs;
+
+        ctx.fillStyle =(aminoAcidLetter === 'M' && proteinOffset === 0) ? '#83f902'
+            : (aminoAcidLetter === 'STOP') ? '#ff2101'
+            : isMismatch ? '#ffcc00'
+            : aaColors[colorToggle];
+
+        ctx.fillRect(xs, y, width, height);
+
+
+        if (aminoAcidLetter) {
+            ctx.save();
+            if (isMismatch) {
+                ctx.strokeStyle = '#ff0000';
+                ctx.strokeRect(xs, y, width, height);
+            }
+            renderAminoAcidLetter(width, xs, y + height, aminoAcidLetter);
+            ctx.restore();
+        }
+    };
+
+    let codonBaseRemainder = 0;
+    let proteinOffset = 0;
+
+    const exonIndices = (strand === '+')
+        ? [...Array(feature.exons.length).keys()]
+        : [...Array(feature.exons.length).keys()].reverse();
+
+    // This counter is across exons.  That means an exon might start
+    // with a light color if the last exon ended on a dark color. This
+    // is more likely to cause overlapping annotations to have shifted
+    // light dark bands relative to each other.  Not sure there is better
+    // way to assign this.
+    let aminoAcidBackdropColorCounter = 1;
+
+    for (const i of exonIndices) {
+        const exon = feature.exons[i];
+        const exonStart = exon.start;
+        const exonEnd = exon.end;
+
+        let bpPos = (strand === '+') ? exonStart : exonEnd;
+        const exonLimit = (strand === '+') ? exonEnd : exonStart;
+        const step = (strand === '+') ? 1 : -1;
+
+
+        while ((strand === '+' && bpPos < exonLimit) || (strand === '-' && bpPos > exonLimit)) {
+            const neededBases = 3 - codonBaseRemainder;
+            const availableBases = Math.abs(exonLimit - bpPos);
+            const drawBases = Math.min(neededBases, availableBases);
+
+            const bpEnd = bpPos + (drawBases * step);
+            const colorToggle = aminoAcidBackdropColorCounter % 2;
+
+            const aaLetter = oSequence[proteinOffset] || undefined;
+            const isRemainder = codonBaseRemainder > 0;
+
+            let isMismatch = false;
+            if (sequenceInterval.hasSequence(
+                    (strand === '+') ? bpPos : bpEnd, 
+                    (strand === '+') ? bpEnd : bpPos
+                )) {
+
+                const codonSeq = sequenceInterval.getSequence(
+                    (strand === '+') ? bpPos : bpEnd, 
+                    (strand === '+') ? bpEnd : bpPos
+                );
+
+                if (codonSeq && codonSeq.length === 3) {
+                    const codon = (strand === '+')
+                        ? codonSeq
+                        : complementSequence(codonSeq.split('').reverse().join(''));
+
+                    const translated = translationDict[codon];
+                    if (translated && aaLetter && translated !== aaLetter) {
+                        isMismatch = true;
+                    }
+                }
+            }
+
+            doPaint(
+                (strand === '+') ? bpPos : bpEnd,
+                (strand === '+') ? bpEnd : bpPos,
+                aaLetter, colorToggle, isMismatch, isRemainder
+            );
+
+            codonBaseRemainder += drawBases;
+            bpPos = bpEnd;
+
+            if (codonBaseRemainder === 3) {
+                aminoAcidBackdropColorCounter++;
+                proteinOffset += 1;
+                codonBaseRemainder = 0;
+            }
+        }
+
+        // Redundant display across exon boundary
+        if (codonBaseRemainder > 0 &&
+            ((strand === '+' && i + 1 < feature.exons.length) ||
+             (strand === '-' && i - 1 >= 0))) {
+
+            const nextExon = (strand === '+') ? feature.exons[i + 1] : feature.exons[i - 1];
+            const redundantBases = 3 - codonBaseRemainder;
+            const redundantStart = (strand === '+') ? nextExon.start : nextExon.end - redundantBases;
+            const redundantEnd = redundantStart + (redundantBases * step);
+
+            const aaLetter = oSequence[proteinOffset] || undefined;
+
+            doPaint(
+                (strand === '+') ? redundantStart : redundantEnd,
+                (strand === '+') ? redundantEnd : redundantStart,
+                aaLetter, 0, false, true
+            );
+        }
+    }
+
+    ctx.restore();
 }
 
 function renderAminoAcidSequence(ctx, strand, leftExon, exon, riteExon, bpStart, bpPerPixel, y, height, sequenceInterval) {
@@ -374,8 +521,9 @@ function renderFeatureLabel(ctx, feature, featureX, featureX1, featureY, referen
 
         const geneFontStyle = {
             textAlign: "SLANT" === this.labelDisplayMode ? undefined : 'center',
-            fillStyle: color,
-            strokeStyle: color
+            // Dfam - Use the labelColor if defined, otherwise use the color
+            fillStyle: this.labelColor === undefined ? color : this.labelColor,
+            strokeStyle: this.labelColor === undefined ? color : this.labelColor,
         }
 
         const textMetrics = ctx.measureText(name)

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta content="Jim Robinson" name="author">
+    <meta content="Robert Hubley" name="author">
+    <link href=img/favicon.ico rel="shortcut icon">
+    <title>igv.js</title>
+
+</head>
+
+<body>
+
+<h1>SAM alignments on a small contig</h1>
+
+<p>Small sets of alignments do not benefit from the extra conversion to either BAM/CRAM and may be loaded directly.  In this example a Dfam transposable element (TE) family consensus is used as the genome, and a set of aligning TE copies are encoded in SAM.
+</p>
+
+<div id="igvDiv" style="padding-top: 10px;padding-bottom: 10px; border:1px solid lightgray"></div>
+
+<script type="module">
+
+    import igv from "../dist/igv.esm.min.js"
+
+    const options =
+        {
+            reference: { fastaURL: "data/ref-1.fa", indexed: false },
+            locus: ["DR002283232.2"],
+            tracks:
+                [
+                    {
+                      "name": "TE Instances",
+                      "type": "alignment",
+                      "format": "sam",
+                      "sourceType": "sam",
+                      "url": "data/seed-1.sam",
+                      "displayMode": "EXPANDED",
+                      "fastaURL": "data/ref-1.fa",
+                      "autoHeight": "True"
+                    },
+                ]
+
+        }
+
+    var igvDiv = document.getElementById("igvDiv")
+
+    igv.createBrowser(igvDiv, options)
+        .then(function (browser) {
+            console.log("Created IGV browser")
+        })
+
+</script>
+
+</body>
+
+</html>

@@ -33,6 +33,10 @@ import {isDataURL} from "../util/igvUtils.js"
 import {StringUtils} from "../../node_modules/igv-utils/src/index.js"
 import {inferIndexPath} from "../util/fileFormatUtils.js"
 
+// Dfam
+import SamReader from "./samReader.js"
+
+
 class BamSource {
 
     constructor(config, browser) {
@@ -56,6 +60,12 @@ class BamSource {
             this.bamReader = new ShardedBamReader(config, genome)
         } else if ("cram" === config.format) {
             this.bamReader = new CramReader(config, genome, browser)
+        // Dfam
+        } else if ("sam" === config.sourceType) {
+            // Special case where non-indexed files like SAM are small
+            // enough that they can be readily read-once and cached.
+            // This is the case with the Dfam TE browser.
+            this.bamReader = new SamReader(config, genome)
         } else {
             if (!this.config.indexURL && config.indexed !== false) {
                 if (StringUtils.isString(this.config.url)) {

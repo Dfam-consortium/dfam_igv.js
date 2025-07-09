@@ -336,11 +336,18 @@ const BamUtils = {
             alignment.lengthOnRef = lengthOnRef
             // TODO for lh3: parse the CG:B,I tag in SAM here
 
-            if (alignment.start + lengthOnRef < min) {
-                continue    // To the left, skip and continue
-            }
-
-
+            //if (alignment.start + lengthOnRef < min) {
+            //    continue    // To the left, skip and continue
+            //}
+            // Dfam 
+            // RMH: Not sure why the .end field was missing in this decoder but not
+            //      in the bam decoder.  Adding it here to match the bam decoder and 
+            //      fix downstream code that expects it.
+            alignment.end = alignment.start + alignment.lengthOnRef
+            if (alignment.end < min) {
+                continue // To the left, skip and continue
+            }  
+            
             qualString = tokens[10]
             alignment.qual = []
             for (j = 0; j < qualString.length; j++) {

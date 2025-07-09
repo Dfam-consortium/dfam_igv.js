@@ -799,7 +799,13 @@ class TrackViewport extends Viewport {
                         this.browser.search(string)
 
                     } else {
-                        this.browser.zoomWithScaleFactor(0.5, centerBP, this.referenceFrame)
+                        //this.browser.zoomWithScaleFactor(0.5, centerBP, this.referenceFrame)
+                        // Dfam
+                        if ( event.shiftKey ) {
+                            this.browser.zoomWithScaleFactor(1.5, centerBP, this.referenceFrame)
+                        }else {
+                            this.browser.zoomWithScaleFactor(0.5, centerBP, this.referenceFrame)
+                        }
                     }
 
 
