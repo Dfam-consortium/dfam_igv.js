@@ -1,3 +1,5 @@
+# ATTENTION: This is a fork of the igv.js project with extensions for Dfam.  Please see https://github.com/igvteam/igv.js/ for the original project.
+
 # igv.js
 ![build](https://github.com/igvteam/igv.js/actions/workflows/ci_build.yml/badge.svg)
 [![](https://img.shields.io/npm/dw/igv.svg)](https://www.npmjs.com/package/igv)
